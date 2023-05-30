@@ -22,7 +22,7 @@ def create_app():
         return send_from_directory(scratch_fp + 'capture.jpg')
     
 
-
+    return app
 
 
 
