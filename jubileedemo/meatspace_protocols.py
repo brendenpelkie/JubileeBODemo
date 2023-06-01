@@ -1,0 +1,1 @@
+# this module should handle taking things like "add 5ml of red solution to well A1" and convert that to 'move to XYZ, 'extrude' 5 ml" which will be passed to the jubilee controller
