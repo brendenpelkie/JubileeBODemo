@@ -3,4 +3,13 @@ duet:
 
 CAMERA_PI:
 
+
+DECK:
+  sample_plates: [3,4,5,6] # which plates are specified as sample locations
+  red_location: '1.A1'
+  green_location: '1.A2'
+  blue_location: '1.A3'
+  rinse_location: '2.A1'
+  waste_location: '2.A2'
+
 BAYESIAN_OPTIMIZATION:

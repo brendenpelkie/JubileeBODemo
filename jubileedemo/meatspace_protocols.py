@@ -94,12 +94,20 @@ class BayesianOptDemoDriver(JubileeMotionController):
     \____/ \__,_|_.__/|_|_|\___|\___| |_____/ \___|_| |_| |_|\___/
         """
     
-    def __init(self, system_config_filepath = './confg.yaml',
+    def __init(self, system_config_filepath = './config.yaml',
                debug = False, simulated = False, deck_config_filepath = "./deck_config.json"):
         
         # load system config
         with open(system_config_filepath, 'rt') as f:
             config = yaml.safe_load(f)
+
+        self.used_wells = []
+        self.sample_plates = config['DECK']['sample_plates']
+        self.green_location = config['DECK']['green_location']
+        self.red_location = config['DECK']['red_location']
+        self.blue_location = config['DECK']['blue_location']
+        self.rinse_location = config['DECK']['rinse_location']
+        self.waste_location = config['DECK']['waste_location']
 
         super().__init__(address = config['duet']['ip_address'], debug = debug, simulated = simulated)
 
@@ -430,7 +438,8 @@ class BayesianOptDemoDriver(JubileeMotionController):
         """
         Convert volume to syringe extrusion distance"""
 
-        distance = volume* 
+        distance = volume*area
+
 
 
     def aspirate(self, deck_index: int, row_letter: str, column_index: int, volume: float):
@@ -453,6 +462,17 @@ class BayesianOptDemoDriver(JubileeMotionController):
         """
 
         raise NotImplementedError
+    
+
+    def prepare_RGB_sample(RGB:tuple, deck_location: str):
+        """
+        prepare a sample of RGB mixes
+        
+        RGB (tuple) - tuple of volumes of red, green, blue solutions to use
+        deck location (str) - deck location in 'plate#.well' format ex '6.A1'
+        """
+
+
     
     def execute_protocol_from_file(self, protocol_file_path):
         """Open the protocol file and run the protocol."""
@@ -477,6 +497,71 @@ class BayesianOptDemoDriver(JubileeMotionController):
     
     def disable_live_video(self):
         raise NotImplementedError
+    
+    def next_sample_well(self):
+        """
+        Return the well location of the next available sample well
+        """
+
+        # get last used well
+        last_well = self.used_wells[-1]
+
+        last_plate, last_row, last_col = self.process_string_location(last_well)
+
+        plate_well_count = self.deck_config['plates'][str(last_plate)]['well_count']
+        
+        row_count, col_count = self.__class__.WELL_COUNT_TO_ROWS[plate_well_count]
+        last_row_letter = chr(row_count + 65 -1)
+
+        if col_count == last_col:
+            if last_row_letter == last_row:
+                if self.sample_plates[-1] == last_plate:
+                    # we've run out of plates
+                    raise RuntimeError("Error: All available sample wells have been used")
+                    # TODO: allow user to refresh all plates and continue experiment
+                else:
+                    new_plate = last_plate + 1
+                    new_col = 1
+                    new_row = 'A'
+            else:
+                new_col = 1
+                new_row = chr(ord(last_row.upper())+1)
+                new_plate = last_plate
+        else:
+            new_col = last_col + 1
+            new_row = last_row
+            new_plate = last_plate
+
+            
+            
+
+        # if there are still wells on plate:
+            # if still wells in row: increment
+            #elif need to jump to next col: increment
+
+        # if there are no wells on plate: 
+         # jump to next plate
+
+        # mark the returned well location as 'used'
+    
+    def process_string_location(loc:str):
+        """
+        Convert '1.A1' string to plate, row, col index"""
+
+        plate, well = loc.split('.')
+        try:
+            plate_index = int(plate)
+        except ValueError:
+            raise AssertionError(f'Error: plate indices must be integers, not {plate}')
+    
+        assert len(well) == 2, 'Error: Well location must be an alphanumeric code like "A1"'
+
+        row_index = well[0]
+        col_index = well[1]
+
+        return plate, row_index, col_index
+
+
     
     def _get_well_position(self, deck_index: int, row_index:int, col_index:int):
         """
