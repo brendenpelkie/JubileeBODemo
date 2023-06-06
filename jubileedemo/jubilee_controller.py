@@ -187,6 +187,11 @@ class JubileeMotionController(Inpromptu):
             self.gcode("G28 Z")
         self._set_absolute_moves(force=True)
 
+    def home_e(self):
+        """
+        Home the extruder axis (syringe)
+        """
+
 
     @cli_method
     def home_in_place(self, *args: str):
