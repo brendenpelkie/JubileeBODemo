@@ -14,7 +14,7 @@ from .jubilee_controller import JubileeMotionController, MachineStateError
 import yaml
 import copy
 import logging
-from camera import Camera
+from jubileedemo.camera import Camera
 import pprint
 from math import sqrt, acos, asin, cos, sin
 
@@ -94,7 +94,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
     \____/ \__,_|_.__/|_|_|\___|\___| |_____/ \___|_| |_| |_|\___/
         """
     
-    def __init(self, system_config_filepath = './config.yaml',
+    def __init__(self, system_config_filepath = './config.yaml',
                debug = False, simulated = False, deck_config_filepath = "./deck_config.json"):
         
         # load system config
@@ -126,7 +126,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
         self.protocol_methods = self._collect_protocol_methods()
 
-        self.camera = Camera()
+        #self.camera = Camera()
 
     def _collect_protocol_methods(self):
         """
@@ -135,7 +135,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
         protocol_methods = {}
 
         def get_dict_attr(obj, attr):
-            for obj in [obj] + obj.__class___.mro():
+            for obj in [obj] + obj.__class__.mro():
                 if attr in obj.__dict__:
                     return obj.__dict__[attr]
             raise AttributeError
@@ -502,10 +502,15 @@ class BayesianOptDemoDriver(JubileeMotionController):
         """
         Return the well location of the next available sample well
         """
+        #TODO: Make increment right
 
         # get last used well
+        if len(self.used_wells) == 0:
+            plate = self.sample_plates[0]
+            new_well = 'A1'
+            return str(plate) + '.' + new_well
+            
         last_well = self.used_wells[-1]
-
         last_plate, last_row, last_col = self.process_string_location(last_well)
 
         plate_well_count = self.deck_config['plates'][str(last_plate)]['well_count']
@@ -520,7 +525,8 @@ class BayesianOptDemoDriver(JubileeMotionController):
                     raise RuntimeError("Error: All available sample wells have been used")
                     # TODO: allow user to refresh all plates and continue experiment
                 else:
-                    new_plate = last_plate + 1
+                    old_plate_index = [i for i, plate in self.sample_plates if plate == last_plate][0]
+                    new_plate = self.sample_plates[old_plate_index + 1]
                     new_col = 1
                     new_row = 'A'
             else:
@@ -532,6 +538,10 @@ class BayesianOptDemoDriver(JubileeMotionController):
             new_row = last_row
             new_plate = last_plate
 
+        new_well = str(new_plate) + '.' + str(new_row) + str(new_col)
+        self.used_wells.append(new_well)
+
+        return new_well
             
             
 
