@@ -17,6 +17,7 @@ import logging
 from jubileedemo.camera import Camera
 import pprint
 from math import sqrt, acos, asin, cos, sin
+import re
 
 def protocol_method(func):
     """mark a function as useable in protocols"""
@@ -507,8 +508,9 @@ class BayesianOptDemoDriver(JubileeMotionController):
         # get last used well
         if len(self.used_wells) == 0:
             plate = self.sample_plates[0]
-            new_well = 'A1'
-            return str(plate) + '.' + new_well
+            new_well = str(plate) + '.A1'
+            self.used_wells.append(new_well)
+            return new_well
             
         last_well = self.used_wells[-1]
         last_plate, last_row, last_col = self.process_string_location(last_well)
@@ -518,14 +520,14 @@ class BayesianOptDemoDriver(JubileeMotionController):
         row_count, col_count = self.__class__.WELL_COUNT_TO_ROWS[plate_well_count]
         last_row_letter = chr(row_count + 65 -1)
 
-        if col_count == last_col:
+        if int(col_count) == int(last_col):
             if last_row_letter == last_row:
-                if self.sample_plates[-1] == last_plate:
+                if int(self.sample_plates[-1]) == int(last_plate):
                     # we've run out of plates
                     raise RuntimeError("Error: All available sample wells have been used")
                     # TODO: allow user to refresh all plates and continue experiment
                 else:
-                    old_plate_index = [i for i, plate in self.sample_plates if plate == last_plate][0]
+                    old_plate_index = [i for i, plate in enumerate(self.sample_plates) if int(plate) == int(last_plate)][0]
                     new_plate = self.sample_plates[old_plate_index + 1]
                     new_col = 1
                     new_row = 'A'
@@ -534,7 +536,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
                 new_row = chr(ord(last_row.upper())+1)
                 new_plate = last_plate
         else:
-            new_col = last_col + 1
+            new_col = int(last_col) + 1
             new_row = last_row
             new_plate = last_plate
 
@@ -554,7 +556,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
         # mark the returned well location as 'used'
     
-    def process_string_location(loc:str):
+    def process_string_location(self, loc:str):
         """
         Convert '1.A1' string to plate, row, col index"""
 
@@ -564,10 +566,10 @@ class BayesianOptDemoDriver(JubileeMotionController):
         except ValueError:
             raise AssertionError(f'Error: plate indices must be integers, not {plate}')
     
-        assert len(well) == 2, 'Error: Well location must be an alphanumeric code like "A1"'
+        #assert len(well) == 2, 'Error: Well location must be an alphanumeric code like "A1"'
 
-        row_index = well[0]
-        col_index = well[1]
+        row_index, col_index = re.match(r"([a-z]+)([0-9]+)", well, re.I).groups()
+
 
         return plate, row_index, col_index
 
