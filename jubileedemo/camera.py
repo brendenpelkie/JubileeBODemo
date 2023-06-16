@@ -1,4 +1,5 @@
 import requests
+import webbrowser
 
 class Camera():
     """
@@ -8,22 +9,23 @@ class Camera():
         self.address = config['camera_address']
         self.port = config['camera_port']
 
-        self.endpoint = config['url_endpoint']
+        self.video_endpoint = config['url_videoendpoint']
+        self.still_endpoint = config['url_stillendpoint']
 
-        self.url = f'http://{self.address}:{self.port}/{self.endpoint}'
-
-    def capture_image(self, fp, timeout = 10):
+        self.still_url = f'http://{self.address}:{self.port}/{self.still_endpoint}'
+        self.video_url = f'http://{self.address}:{self.port}/{self.video_endpoint}'
+    def capture_image(self, timeout = 10):
         """
         Capture image from raspberry pi and write to file
         """
         try:
-            response = requests.get(self.url, timeout = 10)
+            response = requests.get(self.still_url, timeout = 10)
         except [ConnectionError, ConnectionRefusedError]:
             raise AssertionError
         
         assert response.status_code == 200
 
-        with open(fp, 'wb') as f:
-            f.write(response.content)
+        return response.content
 
-        return True
+    def video_feed(self):
+        webbrowser.open(self.video_url)

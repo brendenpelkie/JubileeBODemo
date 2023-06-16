@@ -8,7 +8,7 @@ import json
 import time
 import curses
 import pprint
-from inpromptu import Inpromptu, cli_method
+#from inpromptu import Inpromptu, cli_method
 from functools import wraps
 
 #TODO: Figure out how to print error messages from the Duet.
@@ -31,14 +31,13 @@ def machine_is_homed(func):
     return homing_check
 
 
-class JubileeMotionController(Inpromptu):
+class JubileeMotionController():
     """Driver for sending motion cmds and polling the machine state."""
 
     LOCALHOST = "192.168.1.2"
 
     def __init__(self, address=LOCALHOST, debug=False, simulated=False, reset=False):
         """Start with sane defaults. Setup command and subscribe connections."""
-        super().__init__()
         if address != self.__class__.LOCALHOST:
             print("Warning: disconnecting this application from the network will halt connection to Jubilee.")
         self.address = address
@@ -134,7 +133,7 @@ class JubileeMotionController(Inpromptu):
         return file_contents
 
 
-    @cli_method
+
     def reset(self):
         """Issue a software reset."""
         # End the subscribe thread first.
@@ -152,7 +151,7 @@ class JubileeMotionController(Inpromptu):
         raise MachineStateError("Reconnecting failed.")
 
 
-    @cli_method
+
     def home_all(self):
         # Having a tool is only possible if the machine was already homed.
         if self.active_tool_index != -1:
@@ -163,7 +162,6 @@ class JubileeMotionController(Inpromptu):
         self.axes_homed = [True, True, True, True] # X, Y, Z, U
 
 
-    @cli_method
     def home_xyu(self):
         """Home the XY axes.
         Home Y before X to prevent possibility of crashing into the tool rack.
@@ -177,7 +175,7 @@ class JubileeMotionController(Inpromptu):
         self.axes_homed = [True, True, z_home_status, True]
 
 
-    @cli_method
+
     def home_z(self):
         """Home the Z axis.
         Note that the Deck must be clear first.
@@ -193,7 +191,7 @@ class JubileeMotionController(Inpromptu):
         """
 
 
-    @cli_method
+
     def home_in_place(self, *args: str):
         """Set the current location of a machine axis or axes to 0."""
         for axis in args:
@@ -235,7 +233,6 @@ class JubileeMotionController(Inpromptu):
         self._move_xyz(x, y, z, wait)
 
 
-    @cli_method
     def move_xyz_absolute(self, x: float = None, y: float = None, z: float = None, wait: bool = False):
         """Do an absolute move in XYZ."""
         # TODO: use push and pop sematics instead.
@@ -244,7 +241,6 @@ class JubileeMotionController(Inpromptu):
 
 
     @property
-    @cli_method
     def position(self):
         """Returns the machine control point in mm."""
         # Axes are ordered X, Y, Z, U, E, E0, E1, ... En, where E is a copy of E0.
@@ -253,7 +249,6 @@ class JubileeMotionController(Inpromptu):
         return positions
 
 
-    @cli_method
     def pickup_tool(self, tool_index: int):
         """Pick up the tool specified by tool index."""
         if tool_index < 0:
@@ -263,7 +258,6 @@ class JubileeMotionController(Inpromptu):
         self._active_tool_index = tool_index
 
 
-    @cli_method
     def park_tool(self):
         """Park the current tool."""
         self.gcode("T-1")
@@ -272,7 +266,6 @@ class JubileeMotionController(Inpromptu):
 
 
     @property
-    @cli_method
     def active_tool_index(self):
         """Return the index of the current tool."""
         if self._active_tool_index is None: # Starting from a fresh connection.
@@ -294,7 +287,6 @@ class JubileeMotionController(Inpromptu):
         return self._active_tool_index
 
     @property
-    @cli_method
     def tool_z_offsets(self):
         """Return (in tool order) a list of tool's z offsets"""
         # Starting from fresh connection, query from the Duet.
@@ -314,7 +306,6 @@ class JubileeMotionController(Inpromptu):
 
 
     @property
-    @cli_method
     def axis_limits(self):
         """Return (in XYZU order) a list of tuples specifying (min, max) axis limit"""
         # Starting from fresh connection, query from the Duet.
@@ -333,7 +324,6 @@ class JubileeMotionController(Inpromptu):
         # Return the cached value.
         return self._axis_limits
 
-    @cli_method
     @machine_is_homed
     def keyboard_control(self, prompt: str = "=== Manual Control ==="):
         """Use keyboard input to move the machine in steps.
@@ -413,11 +403,11 @@ class JubileeMotionController(Inpromptu):
         self.disconnect()
 
 
-if __name__ == "__main__":
-    with JubileeMotionController(simulated=False, debug=True) as jubilee:
-        jubilee.cmdloop()
-        #jubilee.home_all()
-        #jubilee.move_xyz_absolute(z=20)
+#if __name__ == "__main__":
+#    with JubileeMotionController(simulated=False, debug=True) as jubilee:
+#        jubilee.cmdloop()
+#        #jubilee.home_all()
+#        #jubilee.move_xyz_absolute(z=20)
         #jubilee.move_xyz_absolute(150, 150, wait=True)
         #print("done moving to initial spot.")
         #jubilee.move_xyz_relative(10)

@@ -2,10 +2,14 @@ duet:
   ip_address: 192.168.1.2
 
 CAMERA_PI:
+  ip_address: 192.168.2.2
+  port: 5000
+  url_videoendpoint: video_feed
+  url_stillendpoint: picture
 
 
 DECK:
-  sample_plates: [3,4,5,6] # which plates are specified as sample locations
+  sample_plates: [3,4,5] # which plates are specified as sample locations
   red_location: '1.A1'
   green_location: '1.A2'
   blue_location: '1.A3'

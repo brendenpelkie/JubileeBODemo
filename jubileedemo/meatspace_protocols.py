@@ -115,6 +115,8 @@ class BayesianOptDemoDriver(JubileeMotionController):
         self.deck_config_filepath = deck_config_filepath
         self.deck_config = copy.deepcopy(self.__class__.BLANK_DECK_CONFIGURATION)
 
+        self.camera = Camera(config['CAMERA_PI'])
+
         if deck_config_filepath:
             try:
                 self.load_deck_config(deck_config_filepath)
@@ -494,10 +496,12 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
 
     def enable_live_video(self):
-        raise NotImplementedError
+        self.camera.video_feed()
     
     def disable_live_video(self):
-        raise NotImplementedError
+        """
+        we're just gonna get a bunch of browser tabs and live with it"""
+        pass
     
     def next_sample_well(self):
         """
@@ -544,17 +548,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
         self.used_wells.append(new_well)
 
         return new_well
-            
-            
 
-        # if there are still wells on plate:
-            # if still wells in row: increment
-            #elif need to jump to next col: increment
-
-        # if there are no wells on plate: 
-         # jump to next plate
-
-        # mark the returned well location as 'used'
     
     def process_string_location(self, loc:str):
         """
