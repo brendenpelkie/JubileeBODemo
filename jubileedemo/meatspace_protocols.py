@@ -63,8 +63,8 @@ class BayesianOptDemoDriver(JubileeMotionController):
     IDLE_Z_HEIGHT = 300
 
     # TODO: Load this from a config file or read from machine config
-    CAMERA_TOOL_INDEX = 1
-    SYRINGE_TOOL_INDEX = 2
+    CAMERA_TOOL_INDEX = 0
+    SYRINGE_TOOL_INDEX = 1
 
     BLANK_DECK_CONFIGURATION = \
         {"plates": {},
@@ -270,7 +270,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
                 self.move_xy_absolute(coords[0], coords[1], wait = True)
 
                 # TODO: make it so user can use jog controls to adjust alignment here
-                self.input(f"Currently positioned at index: {REG_POINT[index]} | {coords}. Press any key to continue.")
+                input(f"Currently positioned at index: {REG_POINT[index]} | {coords}. Press any key to continue.")
         finally:
             # TODO: disable camera feed and park tool
             pass
@@ -339,7 +339,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
             #ask for the deck index if the user didn't input it
             if deck_index is None:
                 self.completions = list(map(str, range(self.__class__.DECK_PLATE_COUNT)))
-                deck_index = int(self.input(f"Enter deck index: "))
+                deck_index = int(input(f"Enter deck index: "))
 
 
             deck_index_str = str(deck_index)
@@ -348,20 +348,20 @@ class BayesianOptDemoDriver(JubileeMotionController):
             if deck_index_str in self.deck_config['plates']:
                 # issue warning that plate exists and bail if canceled by user
                 self.completions = ["y", "n"]
-                response = self.input(f"Warning: configuration for deck slot {deck_index} already exists. Continuing will override this current config. Process? [y/n]")
+                response = input(f"Warning: configuration for deck slot {deck_index} already exists. Continuing will override this current config. Process? [y/n]")
                 if response.lower not in ["y", "yes"]:
                     return
                 old_plate_config = copy.deepcopy(self.deck_config['plates'][deck_index_str])
 
             #create a new deck configuration from scratch
-            self.dec_config['plates'][deck_index_str] = copy.deepcopy(self.__class__.BLANK_DECK_PLATE_CONFIG)
+            self.deck_config['plates'][deck_index_str] = copy.deepcopy(self.__class__.BLANK_DECK_PLATE_CONFIG)
 
             # ask for well count if the user didn't input
             # TODO: 
 
             if well_count is None:
                 self.completions = list(map(str, self.__class__.WELL_COUNT_TO_ROWS.keys()))
-                well_count = int(self.input(f"Enter number of wells: "))
+                well_count = int(input(f"Enter number of wells: "))
 
             self.deck_config['plates'][deck_index_str]["well_count"] = well_count
 
@@ -369,14 +369,14 @@ class BayesianOptDemoDriver(JubileeMotionController):
             if plate_loaded is None:
                 plate_loaded = False
                 self.completions = ["y", "yes"]
-                response = self.input(f"Is the plate already loaded on deck slot {deck_index}? ")
+                response = input(f"Is the plate already loaded on deck slot {deck_index}? ")
                 if response.lower() in ['y', 'yes']:
                     plate_loaded = True
 
 
             if not plate_loaded:
-                self.move_zy_absolute(0,0)
-                self.input(f"please load the plate in deck slot {deck_index}. "
+                self.move_xy_absolute(0,0)
+                input(f"please load the plate in deck slot {deck_index}. "
                            "Press enter when finished")
                 
                 row_count, col_count = self.__class__.WELL_COUNT_TO_ROWS[well_count]
@@ -393,19 +393,19 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
                 # collect 3 'teach points' for this plate
                 # point 1
-                self.input("Commencing manual zeroing. Press enter when ready or 'CTRL-C' to abort")
+                input("Commencing manual zeroing. Press enter when ready or 'CTRL-C' to abort")
                 self.keyboard_control(prompt = 'Center the camera over well position A1. ' \
                                       "Press 'q' to set the teach point or 'ctrl-c' to abort")
                 self.deck_config['plates'][deck_index_str]['corner_well_centroids'][0] = self.position[0:2]
 
                 # point 2
-                self.input("Commencing manual zeroing. Press enter when ready or 'CTRL-C' to abort")
+                input("Commencing manual zeroing. Press enter when ready or 'CTRL-C' to abort")
                 self.keyboard_control(prompt = f'Center the camera over well position A{row_count}. ' \
                                       "Press 'q' to set the teach point or 'ctrl-c' to abort")
                 self.deck_config['plates'][deck_index_str]['corner_well_centroids'][1] = self.position[0:2]
 
                 # point 3
-                self.input("Commencing manual zeroing. Press enter when ready or 'CTRL-C' to abort")
+                input("Commencing manual zeroing. Press enter when ready or 'CTRL-C' to abort")
                 self.keyboard_control(prompt = f'Center the camera over well position {last_row_letter}{row_count}. ' \
                                       "Press 'q' to set the teach point or 'ctrl-c' to abort")
                 self.deck_config['plates'][deck_index_str]['corner_well_centroids'][2] = self.position[0:2]
@@ -418,7 +418,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
                 self.pickup_tool(self.__class__.SYRINGE_TOOL_INDEX)
                 x, y = self._get_well_position(deck_index, 0, 0)
                 self.move_xy_absolute(x, y)
-                self.input("In the next step set the reference point from where the dispense depth is measured. This is set from the topmost part of the plate well or vessel\r\n" 
+                input("In the next step set the reference point from where the dispense depth is measured. This is set from the topmost part of the plate well or vessel\r\n" 
                            "Press enter when ready")
                 self.keyboard_control(prompt = "move the syringe tip to a heigh where it just clears the plate or vessel \r\n" 
                                       "Press 'q to set the height or 'ctrl-c' to abort")

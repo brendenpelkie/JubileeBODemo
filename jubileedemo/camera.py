@@ -6,8 +6,8 @@ class Camera():
     raspberry pi camera server client
     """
     def __init__(self, config):
-        self.address = config['camera_address']
-        self.port = config['camera_port']
+        self.address = config['ip_address']
+        self.port = config['port']
 
         self.video_endpoint = config['url_videoendpoint']
         self.still_endpoint = config['url_stillendpoint']
