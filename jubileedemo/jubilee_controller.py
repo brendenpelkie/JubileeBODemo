@@ -18,7 +18,6 @@ class MachineStateError(Exception):
     pass
 
 def machine_is_homed(func):
-    @wraps(func) # We need this for @cli_method to work
     def homing_check(self, *args, **kwds):
         # Check the cached value if one exists.
         if self.axes_homed and all(self.axes_homed):

@@ -1,0 +1,67 @@
+{
+    "plates": {
+        "0": {
+            "id": "",
+            "corner_well_centroids": [
+                [
+                    273.75,
+                    220.75
+                ],
+                [
+                    178.75,
+                    221.75
+                ],
+                [
+                    181.75,
+                    277.75
+                ]
+            ],
+            "well_count": 12,
+            "liquid_level": {},
+            "plate_height": 55.558
+        },
+        "2": {
+            "id": "",
+            "corner_well_centroids": [
+                [
+                    274.625,
+                    121.25
+                ],
+                [
+                    179.625,
+                    121.25
+                ],
+                [
+                    180.625,
+                    178.25
+                ]
+            ],
+            "well_count": 12,
+            "liquid_level": {},
+            "plate_height": 55.558
+        },
+        "1": {
+            "id": "",
+            "corner_well_centroids": [
+                [
+                    124.25,
+                    228.5
+                ],
+                [
+                    48.25,
+                    228.5
+                ],
+                [
+                    48.25,
+                    266.5
+                ]
+            ],
+            "well_count": 6,
+            "liquid_level": {},
+            "plate_height": 82.558
+        }
+    },
+    "safe_z": 149.558,
+    "idle_z": 275,
+    "cleaning_config": {}
+}

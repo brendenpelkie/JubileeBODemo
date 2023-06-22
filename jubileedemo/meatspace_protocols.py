@@ -17,6 +17,7 @@ import logging
 from jubileedemo.camera import Camera
 import pprint
 from math import sqrt, acos, asin, cos, sin
+import math
 import re
 
 def protocol_method(func):
@@ -64,7 +65,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
     # TODO: Load this from a config file or read from machine config
     CAMERA_TOOL_INDEX = 0
-    SYRINGE_TOOL_INDEX = 1
+    DISPENSE_TOOL_INDEX = 1
 
     BLANK_DECK_CONFIGURATION = \
         {"plates": {},
@@ -109,6 +110,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
         self.blue_location = config['DECK']['blue_location']
         self.rinse_location = config['DECK']['rinse_location']
         self.waste_location = config['DECK']['waste_location']
+        self.dispense_config = config['DISPENSE_TOOL']
 
         super().__init__(address = config['duet']['ip_address'], debug = debug, simulated = simulated)
 
@@ -226,8 +228,9 @@ class BayesianOptDemoDriver(JubileeMotionController):
         _, _, current_z = self.position
         tool_offsets = self.tool_z_offsets
 
-        if current_z < tool_offsets[tool_index]:
-            super().move_xyz_absolute(z = tool_offsets[tool_index] + 5)
+        #if current_z < tool_offsets[tool_index]:
+        if current_z < self.safe_z:
+            super().move_xyz_absolute(z = self.safe_z)
 
         super().pickup_tool(tool_index)
 
@@ -328,18 +331,21 @@ class BayesianOptDemoDriver(JubileeMotionController):
         self.idle_z = self.deck_config["idle_z"]
 
     @requires_safe_z
-    def setup_plate(self, deck_index: int = None, well_count: int = None, plate_loaded: bool = None):
+    def setup_plate(self, deck_slot: int = None, well_count: int = None, plate_loaded: bool = None):
         """
         configure the plate type and location
         """
 
         old_plate_config = None
+        deck_slot = int(deck_slot)
+        well_count = int(well_count)
+        deck_index = deck_slot - 1
 
         try:
             #ask for the deck index if the user didn't input it
             if deck_index is None:
                 self.completions = list(map(str, range(self.__class__.DECK_PLATE_COUNT)))
-                deck_index = int(input(f"Enter deck index: "))
+                deck_index = int(input(f"Enter deck slot: ")) - 1
 
 
             deck_index_str = str(deck_index)
@@ -348,8 +354,9 @@ class BayesianOptDemoDriver(JubileeMotionController):
             if deck_index_str in self.deck_config['plates']:
                 # issue warning that plate exists and bail if canceled by user
                 self.completions = ["y", "n"]
-                response = input(f"Warning: configuration for deck slot {deck_index} already exists. Continuing will override this current config. Process? [y/n]")
-                if response.lower not in ["y", "yes"]:
+                response = input(f"Warning: configuration for deck slot {deck_slot} already exists. Continuing will override this current config. Process? [y/n]")
+                if response.lower() not in ["y", "yes"]:
+                    print('returning and exiting')
                     return
                 old_plate_config = copy.deepcopy(self.deck_config['plates'][deck_index_str])
 
@@ -369,14 +376,14 @@ class BayesianOptDemoDriver(JubileeMotionController):
             if plate_loaded is None:
                 plate_loaded = False
                 self.completions = ["y", "yes"]
-                response = input(f"Is the plate already loaded on deck slot {deck_index}? ")
+                response = input(f"Is the plate already loaded on deck slot {deck_slot}? ")
                 if response.lower() in ['y', 'yes']:
                     plate_loaded = True
 
 
             if not plate_loaded:
                 self.move_xy_absolute(0,0)
-                input(f"please load the plate in deck slot {deck_index}. "
+                input(f"please load the plate in deck slot {deck_slot}. "
                            "Press enter when finished")
                 
                 row_count, col_count = self.__class__.WELL_COUNT_TO_ROWS[well_count]
@@ -400,13 +407,13 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
                 # point 2
                 input("Commencing manual zeroing. Press enter when ready or 'CTRL-C' to abort")
-                self.keyboard_control(prompt = f'Center the camera over well position A{row_count}. ' \
+                self.keyboard_control(prompt = f'Center the camera over well position A{col_count}. ' \
                                       "Press 'q' to set the teach point or 'ctrl-c' to abort")
                 self.deck_config['plates'][deck_index_str]['corner_well_centroids'][1] = self.position[0:2]
 
                 # point 3
                 input("Commencing manual zeroing. Press enter when ready or 'CTRL-C' to abort")
-                self.keyboard_control(prompt = f'Center the camera over well position {last_row_letter}{row_count}. ' \
+                self.keyboard_control(prompt = f'Center the camera over well position {last_row_letter}{col_count}. ' \
                                       "Press 'q' to set the teach point or 'ctrl-c' to abort")
                 self.deck_config['plates'][deck_index_str]['corner_well_centroids'][2] = self.position[0:2]
 
@@ -415,7 +422,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
                 # part 2: define the plate height with the tool
                 self.move_xy_absolute() # safe z
 
-                self.pickup_tool(self.__class__.SYRINGE_TOOL_INDEX)
+                self.pickup_tool(self.__class__.DISPENSE_TOOL_INDEX)
                 x, y = self._get_well_position(deck_index, 0, 0)
                 self.move_xy_absolute(x, y)
                 input("In the next step set the reference point from where the dispense depth is measured. This is set from the topmost part of the plate well or vessel\r\n" 
@@ -443,28 +450,105 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
         distance = volume*area
 
-
-
-    def aspirate(self, deck_index: int, row_letter: str, column_index: int, volume: float):
+    def pickup_dispense_tool(self):
+        #TODO: Make this a general function for all tools
         """
-        Aspirate liquid into the syringe tool
+        Internal check to verify dispense tool is picked up and 
         """
-        raise NotImplementedError
+        if self.active_tool_index != self.__class__.DISPENSE_TOOL_INDEX:
+            if self.active_tool_index == -1:
+                self.pickup_tool(self.__class__.DISPENSE_TOOL_INDEX)
+            else:
+                self.park_tool()
+                self.pickup_tool(self.__class__.DISPENSE_TOOL_INDEX)
+
+        return True
     
-    def dispense(self, deck_index: int, row_letter: str, column_index: int, volume: float):
+    def _pippette_location(self, well, pippette_index):
+        plate, row, col = self._location_to_index(well)
+        #print("location indices: ", plate, row, col)
+        coordinates = self._get_well_position(plate, row, col)
+        #print('dispense coordintes: ', coordinates)
+
+
+        # apply pippette offset
+        assert int(pippette_index) in [0,1,2], 'ERROR: Please choose a valid pippette index out of 0, 1, 2'
+  
+        pippette_offset = eval(self.dispense_config[f'pippette_{pippette_index}_offsets'])
+        dispense_tool_coordinate = [float(coord) + float(off) for coord, off in zip(coordinates, pippette_offset)]
+
+        return dispense_tool_coordinate
+
+
+    @requires_safe_z
+    def dispense(self, well: str, volume: float, pippette_index: int):
 
         """
         Dispense a volume of liquid to a well
+        well (str, ex 1.A1)
+        volume: volume in mL to dispense
+        pippette_index: which pippette to use 
         """
+        # assert dispense tool is picked up
+        _ = self.pickup_dispense_tool()
 
-        raise NotImplementedError
+        plate, row, col = self._location_to_index(well)
+        dispense_tool_coordinate = self._pippette_location(well, pippette_index)
+        # move to well location
+        self.move_xy_absolute(x = dispense_tool_coordinate[0], y = dispense_tool_coordinate[1])
+
+        # move to dispense height
+        dispense_height = self.deck_config['plates'][str(plate)]['plate_height']
+        self.move_xyz_absolute(z = dispense_height)
+
+        # dispense
+        self._peristaltic_pump(pippette_index, volume)
+        time.sleep(0.5)
+        # move back to safe z height
+        self.move_xyz_absolute(z = dispense_height + 5)
+        
+
+        return
+
+    def _peristaltic_pump(self, pippette_index: int, volume: float):
+        """
+        actually activate pump
+        """
+        volumes = [0,0,0]
+        volumes[pippette_index] = volume
+        stringvol = ':'.join([str(-v) for v in volumes]) # negative b/c gcode pump reverse is suspect for now
+
+        self.gcode(f'G1 E{stringvol}')
+
+        return
     
-    def rinse(self, deck_index: int, row_letter: str, column_index: int):
+    def prime_lines(self, well, volume = 35):
         """
-        Rinse the syringe out in a water well
+        Prime all the lines with 35 ml of milk
         """
+        pippette_index = 0
 
-        raise NotImplementedError
+        # assert dispense tool is picked up
+        _ = self.pickup_dispense_tool()
+
+        plate, row, col = self._location_to_index(well)
+        dispense_tool_coordinate = self._pippette_location(well, pippette_index)
+        # move to well location
+        self.move_xy_absolute(x = dispense_tool_coordinate[0], y = dispense_tool_coordinate[1])
+
+        # move to dispense height
+        dispense_height = self.deck_config['plates'][str(plate)]['plate_height']
+        self.move_xyz_absolute(z = dispense_height)
+        
+        volumes = [str(-volume)]*3
+        stringvol = ':'.join(volumes)
+    
+
+        self.gcode(f'G1 E{stringvol}')
+
+        self.move_xyz_absolute(z = dispense_height + 5)
+
+        return
     
 
     def prepare_RGB_sample(RGB:tuple, deck_location: str):
@@ -512,14 +596,16 @@ class BayesianOptDemoDriver(JubileeMotionController):
         # get last used well
         if len(self.used_wells) == 0:
             plate = self.sample_plates[0]
+            plate_index = plate - 1
             new_well = str(plate) + '.A1'
             self.used_wells.append(new_well)
             return new_well
             
         last_well = self.used_wells[-1]
         last_plate, last_row, last_col = self.process_string_location(last_well)
+        last_plate_index = int(last_plate) - 1
 
-        plate_well_count = self.deck_config['plates'][str(last_plate)]['well_count']
+        plate_well_count = self.deck_config['plates'][str(last_plate_index)]['well_count']
         
         row_count, col_count = self.__class__.WELL_COUNT_TO_ROWS[plate_well_count]
         last_row_letter = chr(row_count + 65 -1)
@@ -566,6 +652,29 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
 
         return plate, row_index, col_index
+    
+    def _location_to_index(self, loc:str):
+        """
+        Convert '1.A1' location to integer indices
+        """
+
+        plate, row, column = self.process_string_location(loc)
+
+        plate_index = int(plate) - 1
+        row_index = ord(row) - 65
+        column_index = int(column) - 1
+
+        return plate_index, row_index, column_index
+    
+    def _norm_angle(self, angle):
+        """
+        Adjust plate angles so they are around 0 rads so that averaging works
+        """
+        angle = angle % math.pi
+        if angle > math.pi/2:
+            angle = angle - math.pi
+
+        return angle
 
 
     
@@ -591,6 +700,13 @@ class BayesianOptDemoDriver(JubileeMotionController):
         plate_width = sqrt((b[0] - a[0])**2 + (b[1] - a[1])**2)
         plate_height = sqrt((c[0] - b[0])**2 + (c[1] - b[1])**2)
 
+        #print('a: ', a)
+        #print('b: ', b)
+        #print('c: ', c)
+
+        #print('height: ', plate_height)
+        #print('width: ', plate_width)
+
         x_spacing = plate_width/(col_count - 1)
         y_spacing = plate_height/(row_count - 1)
 
@@ -598,15 +714,29 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
         theta1 = acos((c[1] - b[1])/plate_height)
         theta2 = acos((b[0] - a[0])/plate_width)
+
+        theta1 = self._norm_angle(theta1)
+        theta2 = self._norm_angle(theta2)
+
         theta = (theta1 + theta2)/2
 
+
+        #print('theta :', theta)
         # translate/rotate nominal spot to actual spot
             
         x_nominal = col_index * x_spacing
         y_nominal = row_index * y_spacing
 
-        x_transformed = x_nominal * cos(theta) - y_nominal * sin(theta) + a[0]
-        y_transformed = x_nominal * sin(theta) + y_nomincal * cos(theta) + a[1]
+        #print('x nominal: ', x_nominal)
+        #print('y nominal: ', y_nominal)
+
+        #print('x adjust for well: ', x_nominal * cos(theta) - y_nominal * sin(theta))
+        #print('y adjust for well: ', x_nominal * sin(theta) + y_nominal * cos(theta))
+
+        #print('location offset: ', a)
+
+        x_transformed = -(x_nominal * cos(theta) - y_nominal * sin(theta)) + a[0]
+        y_transformed = x_nominal * sin(theta) + y_nominal * cos(theta) + a[1]
 
         return x_transformed, y_transformed
     

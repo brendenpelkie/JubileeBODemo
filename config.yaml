@@ -16,4 +16,9 @@ DECK:
   rinse_location: '2.A1'
   waste_location: '2.A2'
 
+DISPENSE_TOOL:
+  pippette_0_offsets: (0,0)
+  pippette_1_offsets: (10.0, -17.4)
+  pippette_2_offsets: (-10.0, -17.4)
+
 BAYESIAN_OPTIMIZATION:
