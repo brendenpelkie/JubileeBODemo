@@ -267,11 +267,15 @@ class JubileeMotionController():
     @property
     def active_tool_index(self):
         """Return the index of the current tool."""
+        print('calling the property func')
+        print(self._active_tool_index)
         if self._active_tool_index is None: # Starting from a fresh connection.
             try:
                 response = self.gcode("T")
+                print(response)
                 # On HTTP Interface, we get a string instead of -1 when there are no tools.
                 if response.startswith('No tool'):
+                    print('active tool prop thinks theres no tool')
                     return -1
                 # On HTTP Interface, we get a string instead of the tool index.
                 elif response.startswith('Tool'):

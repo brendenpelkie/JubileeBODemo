@@ -464,6 +464,20 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
         return True
     
+    def pickup_camera_tool(self):
+        """
+        ick ick ick fix so this is one func for all that does this
+        """
+        print('current active tool: ', self.active_tool_index)
+        if self.active_tool_index != self.__class__.CAMERA_TOOL_INDEX:
+            if self.active_tool_index == -1:
+                self.pickup_tool(self.__class__.CAMERA_TOOL_INDEX)
+            else:
+                self.park_tool()
+                self.pickup_tool(self.__class__.CAMERA_TOOL_INDEX)
+
+        return True
+    
     def _pippette_location(self, well, pippette_index):
         plate, row, col = self._location_to_index(well)
         #print("location indices: ", plate, row, col)
@@ -509,6 +523,25 @@ class BayesianOptDemoDriver(JubileeMotionController):
         
 
         return
+    @requires_safe_z
+    def well_image(self, well):
+        """
+        Get an image from a well
+        """
+        _ = self.pickup_camera_tool()
+
+        plate, row, col = self._location_to_index(well)
+        coordinates = self._get_well_position(plate, row, col)
+        # move to well location
+        self.move_xyz_absolute(z = (self.safe_z + self.__class__.CAMERA_FOCAL_LENGTH_OFFSET))
+        self.move_xy_absolute(x = coordinates[0], y = coordinates[1])
+
+        image = self.camera.capture_image()
+
+        return image
+
+
+
 
     def _peristaltic_pump(self, pippette_index: int, volume: float):
         """
@@ -516,7 +549,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
         """
         volumes = [0,0,0]
         volumes[pippette_index] = volume
-        stringvol = ':'.join([str(-v) for v in volumes]) # negative b/c gcode pump reverse is suspect for now
+        stringvol = ':'.join([str(v) for v in volumes]) # negative b/c gcode pump reverse is suspect for now
 
         self.gcode(f'G1 E{stringvol}')
 
@@ -540,7 +573,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
         dispense_height = self.deck_config['plates'][str(plate)]['plate_height']
         self.move_xyz_absolute(z = dispense_height)
         
-        volumes = [str(-volume)]*3
+        volumes = [str(volume)]*3
         stringvol = ':'.join(volumes)
     
 
