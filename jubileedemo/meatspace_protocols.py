@@ -105,11 +105,11 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
         self.used_wells = []
         self.sample_plates = config['DECK']['sample_plates']
-        self.green_location = config['DECK']['green_location']
-        self.red_location = config['DECK']['red_location']
-        self.blue_location = config['DECK']['blue_location']
-        self.rinse_location = config['DECK']['rinse_location']
-        self.waste_location = config['DECK']['waste_location']
+        #self.green_location = config['DECK']['green_location']
+        #self.red_location = config['DECK']['red_location']
+        #self.blue_location = config['DECK']['blue_location']
+        #self.rinse_location = config['DECK']['rinse_location']
+        #self.waste_location = config['DECK']['waste_location']
         self.dispense_config = config['DISPENSE_TOOL']
 
         super().__init__(address = config['duet']['ip_address'], debug = debug, simulated = simulated)
@@ -208,13 +208,14 @@ class BayesianOptDemoDriver(JubileeMotionController):
         self.deck_config['idle_z'] = z
 
 
-    def move_xy_absolute(self, x: float = None, y: float = None, wait: bool = False):
+    def move_xy_absolute(self, x: float = None, y: float = None, wait: bool = False, z_safe = True):
         """
         move in XY, including safeZ restrictions
         """
-        if self.safe_z is not None:
+        if self.safe_z is not None and z_safe:
             super().move_xyz_absolute(z=self.safe_z, wait = False)
         super().move_xyz_absolute(x,y, wait = wait)
+
 
     def pickup_tool(self, tool_index: int):
         """
@@ -495,13 +496,14 @@ class BayesianOptDemoDriver(JubileeMotionController):
 
 
     @requires_safe_z
-    def dispense(self, well: str, volume: float, pippette_index: int):
+    def dispense(self, well: str, volume: float, pippette_index: int, safe_z = True):
 
         """
         Dispense a volume of liquid to a well
         well (str, ex 1.A1)
         volume: volume in mL to dispense
         pippette_index: which pippette to use 
+        safe_z - disable z safe height moves if doing a series of dispense in one well or in a row
         """
         # assert dispense tool is picked up
         _ = self.pickup_dispense_tool()
@@ -509,7 +511,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
         plate, row, col = self._location_to_index(well)
         dispense_tool_coordinate = self._pippette_location(well, pippette_index)
         # move to well location
-        self.move_xy_absolute(x = dispense_tool_coordinate[0], y = dispense_tool_coordinate[1])
+        self.move_xy_absolute(x = dispense_tool_coordinate[0], y = dispense_tool_coordinate[1], z_safe= safe_z)
 
         # move to dispense height
         dispense_height = self.deck_config['plates'][str(plate)]['plate_height']
@@ -519,7 +521,7 @@ class BayesianOptDemoDriver(JubileeMotionController):
         self._peristaltic_pump(pippette_index, volume)
         time.sleep(0.5)
         # move back to safe z height
-        self.move_xyz_absolute(z = dispense_height + 5)
+        self.move_xyz_absolute(z = dispense_height + 3)
         
 
         return
@@ -528,6 +530,8 @@ class BayesianOptDemoDriver(JubileeMotionController):
         """
         Get an image from a well
         """
+
+        print('well image function')
         _ = self.pickup_camera_tool()
 
         plate, row, col = self._location_to_index(well)
@@ -537,6 +541,9 @@ class BayesianOptDemoDriver(JubileeMotionController):
         self.move_xy_absolute(x = coordinates[0], y = coordinates[1])
 
         image = self.camera.capture_image()
+        #print('This should sleep')
+        time.sleep(2)
+        print('this should have slept')
 
         return image
 

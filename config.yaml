@@ -9,12 +9,8 @@ CAMERA_PI:
 
 
 DECK:
-  sample_plates: [3,4,5] # which plates are specified as sample locations
-  red_location: '1.A1'
-  green_location: '1.A2'
-  blue_location: '1.A3'
-  rinse_location: '2.A1'
-  waste_location: '2.A2'
+  sample_plates: [3,4] # which plates are specified as sample locations
+
 
 DISPENSE_TOOL:
   pippette_0_offsets: (0,0)
