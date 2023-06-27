@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import time
 
 
 def process_image(image_bin):
@@ -12,6 +13,9 @@ def process_image(image_bin):
     image = cv2.imdecode(image_arr, cv2.IMREAD_COLOR)
     radius = 50
     masked_image = _mask_image(image, radius)
+    t = time.time()
+    cv2.imwrite(f'./sampleimage_full_{t}.jpg', image)
+    cv2.imwrite(f'./sampleimage_masked_{t}.jpg', masked_image)
     values = _get_rgb_avg(masked_image)
     return values
 
@@ -28,11 +32,14 @@ def _mask_image(image, radius):
 
 
 def _get_rgb_avg(image):
-    rgb = []
+    bgr = []
     for dim in [0,1,2]:
         flatdim = image[:,:,dim].flatten()
         indices = flatdim.nonzero()[0]
         value = flatdim.flatten()[indices].mean()
-        rgb.append(value)
+        bgr.append(value)
 
+    #opencv uses bgr so convert to rgb for loss
+    print('swapping')
+    rgb = [bgr[i] for i in [2,1,0]]
     return rgb

@@ -530,8 +530,6 @@ class BayesianOptDemoDriver(JubileeMotionController):
         """
         Get an image from a well
         """
-
-        print('well image function')
         _ = self.pickup_camera_tool()
 
         plate, row, col = self._location_to_index(well)
@@ -539,11 +537,8 @@ class BayesianOptDemoDriver(JubileeMotionController):
         # move to well location
         self.move_xyz_absolute(z = (self.safe_z + self.__class__.CAMERA_FOCAL_LENGTH_OFFSET))
         self.move_xy_absolute(x = coordinates[0], y = coordinates[1])
-
+        time.sleep(3)
         image = self.camera.capture_image()
-        #print('This should sleep')
-        time.sleep(2)
-        print('this should have slept')
 
         return image
 

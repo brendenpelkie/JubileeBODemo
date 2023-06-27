@@ -1,5 +1,6 @@
 import requests
 import webbrowser
+import time
 
 class Camera():
     """
@@ -22,7 +23,7 @@ class Camera():
             response = requests.get(self.still_url, timeout = 10)
         except [ConnectionError, ConnectionRefusedError]:
             raise AssertionError
-        
+        time.sleep(2)
         assert response.status_code == 200
 
         return response.content
