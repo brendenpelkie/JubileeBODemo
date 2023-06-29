@@ -7,13 +7,17 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process import kernels
 import time
 
-def sample_point(jubilee, RYB: tuple, volume: float, well):
+def sample_point(jubilee, RYB: tuple, volume: float, well: str, file_name: str):
     """
     Sample a specified point. 
 
     Inputs:
+    jubilee - jubilee robot instance
     RYB (tuple) - (R, Y, B) values - either 0-1 or 0-255.
     volume: total sample volume
+    well: string well location
+    file_name: what to name image file that gets saved
+
 
     Returns:
     -------
@@ -48,8 +52,11 @@ def sample_point(jubilee, RYB: tuple, volume: float, well):
     time.sleep(5)
     image = jubilee.well_image(well)
 
+    fp_base = jubilee.config['CAMERA_PI']['image_save_fp']
+    filepath = fp_base + '/' + file_name
+
     # do post-processing 
-    RGB = img.process_image(image)
+    RGB = img.process_image(image, filepath)
     
     return RGB
 
@@ -67,7 +74,7 @@ def BO_campaign(initial_data, acquisition_function, number_of_iterations, target
     #kernel = kernels.DotProduct()
     internal_model = model.GaussianProcessModel(kernel, scale = True, alpha = 1e-5)
     acq_kwargs = {'xi':0.25}
-    # we know we are working with a 3-variable constrained design space here so can just hard-code that
+
     # instantiate a bayesian optimizer object
     bo = bayesian_optimizer.BayesianOptimizer(None, acquisition_function, internal_model, initial_data, valid_points = available_points, acq_kwargs = acq_kwargs)
 
@@ -77,7 +84,8 @@ def BO_campaign(initial_data, acquisition_function, number_of_iterations, target
     query_point = bo.campaign_iteration(None, None)[0]
 
     print('first query pt: ', query_point)
-
+    rgb_values_sampled = []
+    ryb_points_sampled = []
     for i in range(number_of_iterations):
         # query point from BO model
         # get well
@@ -85,15 +93,21 @@ def BO_campaign(initial_data, acquisition_function, number_of_iterations, target
         well = jubilee.next_sample_well()
         # run point in real world
         print(f'Dispensing into well {well}')
-        print('RYB values tested: {query_point}')
-        new_color = sample_point(jubilee, query_point, sample_volume, well)
+        print(f'RYB values tested: {query_point}')
+        
+        file_name = f'masked_sample_image_batch_{i}.jpg'
+        new_color = sample_point(jubilee, query_point, sample_volume, well, file_name)
 
-        score = color_loss_calculation(target_color, new_color)
+        ryb_points_sampled.append(query_point)
+        rgb_values_sampled.append(new_color)
+        norm_rgb = normalize_color(new_color)
+        score = color_loss_calculation(target_color, normalize_color(norm_rgb))
 
-        print('RGB values observed: {RGB}')
-        query_point = bo.campaign_iteration(query_point, new_color)[0]
+        print(f'loss score: {score}')
+        print(f'RGB values observed: {norm_rgb}')
+        query_point = bo.campaign_iteration(query_point, score)[0]
 
-    return bo
+    return bo, rgb_values_sampled, ryb_points_sampled
 
 
 

@@ -103,6 +103,8 @@ class BayesianOptDemoDriver(JubileeMotionController):
         with open(system_config_filepath, 'rt') as f:
             config = yaml.safe_load(f)
 
+        self.config = config
+
         self.used_wells = []
         self.sample_plates = config['DECK']['sample_plates']
         #self.green_location = config['DECK']['green_location']

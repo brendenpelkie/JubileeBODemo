@@ -6,6 +6,7 @@ CAMERA_PI:
   port: 5000
   url_videoendpoint: video_feed
   url_stillendpoint: picture
+  image_save_fp: ./sample_images
 
 
 DECK:

@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 
-def process_image(image_bin):
+def process_image(image_bin, filepath):
     """
     externally callable function to run processing pipeline
     
@@ -14,8 +14,8 @@ def process_image(image_bin):
     radius = 50
     masked_image = _mask_image(image, radius)
     t = time.time()
-    cv2.imwrite(f'./sampleimage_full_{t}.jpg', image)
-    cv2.imwrite(f'./sampleimage_masked_{t}.jpg', masked_image)
+    #cv2.imwrite(f'./sampleimage_full_{t}.jpg', image)
+    cv2.imwrite(filepath, masked_image)
     values = _get_rgb_avg(masked_image)
     return values
 
