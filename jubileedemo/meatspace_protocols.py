@@ -507,6 +507,9 @@ class BayesianOptDemoDriver(JubileeMotionController):
         pippette_index: which pippette to use 
         safe_z - disable z safe height moves if doing a series of dispense in one well or in a row
         """
+        # if no volume dispensed, don't do anything
+        if volume == 0:
+            return
         # assert dispense tool is picked up
         _ = self.pickup_dispense_tool()
 

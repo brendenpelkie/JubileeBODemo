@@ -6,6 +6,7 @@ import bayesopt.model as model
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process import kernels
 import time
+import matplotlib.pyplot as plt
 
 def sample_point(jubilee, RYB: tuple, volume: float, well: str, file_name: str):
     """
@@ -48,8 +49,8 @@ def sample_point(jubilee, RYB: tuple, volume: float, well: str, file_name: str):
     jubilee.dispense(well, volumes[2], blue, safe_z = False)
     # measure well with camera
     #sleep so I can stir manually
-    jubilee.move_xy_absolute(x = 20, y = 20)
-    time.sleep(5)
+    #jubilee.move_xy_absolute(x = 20, y = 20)
+    #time.sleep(5)
     image = jubilee.well_image(well)
 
     fp_base = jubilee.config['CAMERA_PI']['image_save_fp']
@@ -58,7 +59,7 @@ def sample_point(jubilee, RYB: tuple, volume: float, well: str, file_name: str):
     # do post-processing 
     RGB = img.process_image(image, filepath)
     
-    return RGB
+    return RGB, image
 
 
 def BO_campaign(initial_data, acquisition_function, number_of_iterations, target_color, jubilee):
@@ -96,7 +97,7 @@ def BO_campaign(initial_data, acquisition_function, number_of_iterations, target
         print(f'RYB values tested: {query_point}')
         
         file_name = f'masked_sample_image_batch_{i}.jpg'
-        new_color = sample_point(jubilee, query_point, sample_volume, well, file_name)
+        new_color, image = sample_point(jubilee, query_point, sample_volume, well, file_name)
 
         ryb_points_sampled.append(query_point)
         rgb_values_sampled.append(new_color)
@@ -107,7 +108,31 @@ def BO_campaign(initial_data, acquisition_function, number_of_iterations, target
         print(f'RGB values observed: {norm_rgb}')
         query_point = bo.campaign_iteration(query_point, score)[0]
 
+        try:
+            plot_results(rgb_values_sampled, target_color)
+        except Exception as e:
+            print(e)
+            pass
+
     return bo, rgb_values_sampled, ryb_points_sampled
+
+
+
+def plot_results(rgb_values_sampled, target_color, image):
+    # get loss values
+    loss_vals = [color_loss_calculation(target_color, normalize_color(rgb)) for rgb in rgb_values_sampled]
+    norm_colors = [normalize_color(rgb) for rgb in rgb_values_sampled]
+    # plot iteration vs. loss with color observed as marker color
+
+    fig, ax = plt.subplots((1,2), figsize = (20,10))
+
+    for i, loss in enumerate(loss_vals):
+        ax[1].scatter(loss_vals, marker = 'o', color = norm_colors[i])
+        ax[0].imshow(image)
+
+
+
+
 
 
 
