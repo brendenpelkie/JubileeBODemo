@@ -7,6 +7,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process import kernels
 import time
 import matplotlib.pyplot as plt
+import cv2
 
 def sample_point(jubilee, RYB: tuple, volume: float, well: str, file_name: str):
     """
@@ -84,9 +85,18 @@ def BO_campaign(initial_data, acquisition_function, number_of_iterations, target
     # get first set of points from model
     query_point = bo.campaign_iteration(None, None)[0]
 
+
     print('first query pt: ', query_point)
     rgb_values_sampled = []
     ryb_points_sampled = []
+
+    plt.ion()
+    fig, ax = plt.subplots(1,2, figsize = (20,8))
+
+    ax[0].set_title('Most Recent Image')
+    ax[1].set_title('Color Loss Plot')
+    ax[1].set_xlabel('Iteration')
+    ax[1].set_ylabel('Loss')
     for i in range(number_of_iterations):
         # query point from BO model
         # get well
@@ -109,7 +119,7 @@ def BO_campaign(initial_data, acquisition_function, number_of_iterations, target
         query_point = bo.campaign_iteration(query_point, score)[0]
 
         try:
-            plot_results(rgb_values_sampled, target_color)
+            plot_results(rgb_values_sampled, target_color, image, fig, ax)
         except Exception as e:
             print(e)
             pass
@@ -118,17 +128,27 @@ def BO_campaign(initial_data, acquisition_function, number_of_iterations, target
 
 
 
-def plot_results(rgb_values_sampled, target_color, image):
+def plot_results(rgb_values_sampled, target_color, image, fig, ax):
     # get loss values
     loss_vals = [color_loss_calculation(target_color, normalize_color(rgb)) for rgb in rgb_values_sampled]
     norm_colors = [normalize_color(rgb) for rgb in rgb_values_sampled]
     # plot iteration vs. loss with color observed as marker color
 
-    fig, ax = plt.subplots((1,2), figsize = (20,10))
+    
+
+    imgbuf = np.frombuffer(image, dtype = np.uint8)
+    imgcv = cv2.imdecode(imgbuf, cv2.IMREAD_COLOR)
+    imgcv_rgb = imgcv[:,:,[2,1,0]]
 
     for i, loss in enumerate(loss_vals):
-        ax[1].scatter(loss_vals, marker = 'o', color = norm_colors[i])
-        ax[0].imshow(image)
+        ax[1].scatter(i, loss_vals[i], marker = 'o', color = norm_colors[i], s = 200)
+        ax[0].imshow(imgcv_rgb)
+
+    fig.canvas.draw()
+
+    fig.canvas.flush_events()
+
+    return
 
 
 

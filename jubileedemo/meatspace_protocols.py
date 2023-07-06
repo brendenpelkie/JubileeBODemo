@@ -674,6 +674,12 @@ class BayesianOptDemoDriver(JubileeMotionController):
         self.used_wells.append(new_well)
 
         return new_well
+    
+    def clear_well_usage(self):
+        """
+        Reset the sample wells to clean in Jubilee's tracker
+        """
+        self.used_wells = []
 
     
     def process_string_location(self, loc:str):
