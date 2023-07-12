@@ -243,7 +243,11 @@ class JubileeMotionController():
     def position(self):
         """Returns the machine control point in mm."""
         # Axes are ordered X, Y, Z, U, E, E0, E1, ... En, where E is a copy of E0.
-        response_chunks = self.gcode("M114").split()
+        try:
+            response_chunks = self.gcode("M114").split()
+        except AttributeError:
+            time.sleep(2)
+            response_chunks = self.gcode("M114").split()
         positions = [float(a.split(":")[1]) for a in response_chunks[:3]]
         return positions
 
